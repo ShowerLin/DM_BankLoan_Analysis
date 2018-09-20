@@ -1,0 +1,65 @@
+
+---
+title: "Problem2"
+output:
+  pdf_document:
+    keep_tex: true
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{wrapfig}
+---
+
+
+
+```{r setup, include=FALSE}
+library(readxl)#laod data from excel file
+library(corrplot)
+library(arules)
+library(arulesViz)
+wd = getwd()
+loan = read_excel(paste(wd,"/loan.xls",sep=""),sheet = 'Data',skip = 2,)
+loan = loan[,-1]
+summary(loan)
+```
+
+##(a)Explore the demographic information of the customers.
+```{r,include=FALSE}
+dgc = as.data.frame(loan[,c(1,2,3,5,7)]) #avoid shallow copy.
+```
+
+```{r,include = TRUE, echo = FALSE,fig.show='hold',out.height = "40%",out.width="30%"}
+hist(dgc$Age)
+hist(dgc$Experience)
+hist(dgc$Income)
+counts<-table(loan$Family)
+barplot(counts,main="loan$Family",xlab="family",ylab="Frequency",col="white")
+counts<-table(loan$Education)
+barplot(counts,main="loan$Education",xlab="education",ylab="Frequency",col="white")
+```
+\subsection{(b)Analyze what variables possibly make a customer more likely to accept a personal loan?}
+
+```{r exa, echo = FALSE, fig.env="wrapfigure",include=FALSE}
+corrplot(cor(loan),method="shade",diag = FALSE,addgrid.col = "white",tl.col = "black",tl.cex = 0.5,cl.cex = 0.5)
+```
+\begin{wrapfigure}{r}{0.7\textwidth} 
+  \includegraphics{tem_files/figure-latex/exa-1.pdf}
+  \caption{Correalation Among Variables}
+\end{wrapfigure}
+  Starting from left to right, the first pair that demonstates a high correlation is "Age-Experience". However, it is apparent that people tend to gain more professional experience as they grow up. 
+
+```{r shopbasket,include = FALSE , echo=FALSE,fig.show='hold',fig.env="wrapfigure"}
+basket = as.data.frame(loan[,8:13])
+basket = +(basket>0)
+item_list = c("Mortage","PersonalLoan","SecuritiesAccount","CDAccount","Online","CreditCard")
+ndt = basket
+basket.sum = apply(basket,1,sum)
+ndt = basket[basket.sum>1,]
+dimnames(ndt) = list(c(1:nrow(ndt)),item_list)
+
+ndt = as(ndt,"transactions")
+summary(ndt)
+rules <- apriori(ndt, parameter = list(supp = 0.1, conf = 0.1, minlen=2, target = "rules"))
+inspect(head(rules, by = "lift"))
+plot(rules, method="graph", control=list(type="items") )
+plot(x=rules,method = 'paracoord')
+```
